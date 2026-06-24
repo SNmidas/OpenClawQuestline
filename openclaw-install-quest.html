@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Operation Molty — The OpenClaw Install Dive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --abyss:#08202B;        /* deep ocean background */
+    --abyss-2:#0C2A38;      /* panel */
+    --abyss-3:#103645;      /* raised panel */
+    --line:#1C4A5C;         /* hairlines */
+    --coral:#FF6B57;        /* lobster accent */
+    --coral-soft:#FF8C7A;
+    --foam:#5FD0C5;         /* seafoam secondary */
+    --sand:#E9D6A8;         /* warm highlight */
+    --text:#DCEAF0;         /* main text */
+    --muted:#7FA0AE;        /* muted text */
+    --good:#5FD0C5;
+    --warn:#FFC24B;
+    --bad:#FF6B57;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(1200px 700px at 80% -10%, rgba(95,208,197,.10), transparent 60%),
+      radial-gradient(900px 600px at -10% 110%, rgba(255,107,87,.10), transparent 55%),
+      var(--abyss);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    line-height:1.55;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:880px;margin:0 auto;padding:20px 18px 80px}
+
+  /* ---------- HUD ---------- */
+  header.hud{
+    position:sticky;top:0;z-index:30;
+    background:linear-gradient(180deg, rgba(8,32,43,.96), rgba(8,32,43,.86));
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);
+    margin:-20px -18px 22px;
+    padding:12px 18px;
+  }
+  .hud-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;max-width:880px;margin:0 auto}
+  .logo{display:flex;align-items:center;gap:9px;font-family:'Bricolage Grotesque';font-weight:800;letter-spacing:-.02em;font-size:1.05rem}
+  .logo .crab{font-size:1.25rem;filter:drop-shadow(0 0 6px rgba(255,107,87,.5))}
+  .hud-spacer{flex:1}
+  .stat{display:flex;flex-direction:column;gap:3px;min-width:118px}
+  .stat .lab{font-family:'IBM Plex Mono';font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .stat .val{font-family:'Bricolage Grotesque';font-weight:700;font-size:1.02rem;line-height:1}
+  .meter{height:6px;border-radius:999px;background:var(--abyss-3);overflow:hidden;border:1px solid var(--line)}
+  .meter > i{display:block;height:100%;border-radius:999px;transition:width .5s ease, background .5s ease}
+  .guide-btn{
+    font-family:'IBM Plex Mono';font-size:.7rem;letter-spacing:.06em;
+    background:var(--abyss-3);color:var(--foam);border:1px solid var(--line);
+    padding:8px 11px;border-radius:999px;cursor:pointer;white-space:nowrap;
+  }
+  .guide-btn:hover{border-color:var(--foam)}
+  .guide-btn b{color:var(--sand)}
+
+  /* ---------- Progress depth rail ---------- */
+  .depthrail{display:flex;gap:6px;margin:0 0 20px;flex-wrap:wrap}
+  .depthrail .dot{flex:1;min-width:14px;height:5px;border-radius:999px;background:var(--abyss-3);border:1px solid var(--line)}
+  .depthrail .dot.done{background:var(--foam);border-color:var(--foam)}
+  .depthrail .dot.cur{background:var(--coral);border-color:var(--coral)}
+
+  /* ---------- Stage card ---------- */
+  .card{
+    background:linear-gradient(180deg,var(--abyss-2),rgba(12,42,56,.6));
+    border:1px solid var(--line);border-radius:var(--radius);
+    padding:24px 22px;animation:rise .45s ease both;
+  }
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .eyebrow{font-family:'IBM Plex Mono';font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--coral-soft);margin:0 0 8px}
+  h1.title{font-family:'Bricolage Grotesque';font-weight:800;letter-spacing:-.02em;font-size:clamp(1.5rem,4vw,2.05rem);line-height:1.08;margin:0 0 4px}
+  .story{color:var(--sand);font-size:.98rem;margin:10px 0 4px;font-style:italic;opacity:.95}
+  .teach{margin:16px 0 4px}
+  .teach p{margin:0 0 11px}
+  .teach p:last-child{margin-bottom:0}
+
+  /* terms */
+  .t{
+    font:inherit;color:var(--foam);background:none;border:none;padding:0;cursor:pointer;
+    border-bottom:1.5px dotted var(--foam);line-height:1.2;
+  }
+  .t:hover,.t:focus{color:#fff;border-bottom-style:solid;outline:none}
+
+  /* command block */
+  .cmd{
+    font-family:'IBM Plex Mono';font-size:.86rem;background:#061821;border:1px solid var(--line);
+    border-left:3px solid var(--coral);border-radius:10px;padding:13px 14px;margin:14px 0;
+    color:#CDE8E4;overflow-x:auto;white-space:pre;position:relative;
+  }
+  .cmd .c-prompt{color:var(--coral-soft);user-select:none}
+  .cmd .c-note{color:var(--muted)}
+  .cmd-cap{font-family:'IBM Plex Mono';font-size:.64rem;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin:-4px 0 2px}
+
+  .callout{
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:14px 0;font-size:.9rem;
+    background:var(--abyss-3);
+  }
+  .callout.safe{border-color:rgba(95,208,197,.5);background:rgba(95,208,197,.08)}
+  .callout.danger{border-color:rgba(255,107,87,.5);background:rgba(255,107,87,.08)}
+  .callout .ctitle{font-family:'IBM Plex Mono';font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--foam);display:block;margin-bottom:4px}
+  .callout.danger .ctitle{color:var(--coral-soft)}
+
+  /* choices */
+  .choices{display:flex;flex-direction:column;gap:12px;margin-top:20px}
+  .choice{
+    text-align:left;background:var(--abyss-3);border:1px solid var(--line);border-radius:12px;
+    padding:15px 16px;cursor:pointer;transition:border-color .15s, transform .1s;width:100%;color:var(--text);font:inherit;
+  }
+  .choice:hover{border-color:var(--foam);transform:translateY(-1px)}
+  .choice:focus-visible{outline:2px solid var(--foam);outline-offset:2px}
+  .choice .chead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .choice .cname{font-family:'Bricolage Grotesque';font-weight:700;font-size:1.05rem}
+  .tag{font-family:'IBM Plex Mono';font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:999px;border:1px solid var(--line)}
+  .tag.rec{color:var(--abyss);background:var(--foam);border-color:var(--foam)}
+  .tag.cost{color:var(--sand);border-color:rgba(233,214,168,.4)}
+  .tag.free{color:var(--foam);border-color:rgba(95,208,197,.4)}
+  .pc{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-top:10px}
+  @media(max-width:520px){.pc{grid-template-columns:1fr}}
+  .pc ul{margin:0;padding:0;list-style:none}
+  .pc li{font-size:.82rem;padding-left:18px;position:relative;margin-bottom:4px;color:#C3D7DE}
+  .pc li::before{position:absolute;left:0;top:0}
+  .pc .pro li::before{content:"+";color:var(--good);font-weight:700}
+  .pc .con li::before{content:"–";color:var(--coral-soft);font-weight:700}
+  .pc h4{font-family:'IBM Plex Mono';font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;margin:0 0 5px;color:var(--muted)}
+
+  /* result + continue */
+  .result{animation:rise .35s ease both;margin-top:18px;border-top:1px solid var(--line);padding-top:18px}
+  .result .rtitle{font-family:'Bricolage Grotesque';font-weight:700;font-size:1.1rem;margin:0 0 6px}
+  .deltas{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+  .delta{font-family:'IBM Plex Mono';font-size:.72rem;padding:4px 9px;border-radius:999px;border:1px solid var(--line)}
+  .delta.up{color:var(--good);border-color:rgba(95,208,197,.4)}
+  .delta.down{color:var(--coral-soft);border-color:rgba(255,107,87,.4)}
+  .delta.spend{color:var(--sand);border-color:rgba(233,214,168,.4)}
+
+  .btn{
+    font-family:'Bricolage Grotesque';font-weight:700;font-size:1rem;
+    background:var(--coral);color:#3a0f08;border:none;border-radius:10px;
+    padding:13px 22px;cursor:pointer;margin-top:6px;transition:filter .15s, transform .1s;
+  }
+  .btn:hover{filter:brightness(1.08)}
+  .btn:active{transform:translateY(1px)}
+  .btn.ghost{background:transparent;color:var(--foam);border:1px solid var(--line)}
+  .btn.ghost:hover{border-color:var(--foam);filter:none}
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+  /* field guide drawer */
+  .scrim{position:fixed;inset:0;background:rgba(3,14,19,.6);backdrop-filter:blur(2px);z-index:40;opacity:0;pointer-events:none;transition:opacity .25s}
+  .scrim.open{opacity:1;pointer-events:auto}
+  .drawer{
+    position:fixed;top:0;right:0;height:100%;width:min(420px,90vw);z-index:50;
+    background:var(--abyss-2);border-left:1px solid var(--line);
+    transform:translateX(100%);transition:transform .28s ease;display:flex;flex-direction:column;
+  }
+  .drawer.open{transform:none}
+  .drawer header{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+  .drawer header h3{font-family:'Bricolage Grotesque';font-weight:800;margin:0;font-size:1.1rem;flex:1}
+  .drawer .close{background:none;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 10px;cursor:pointer;font-family:'IBM Plex Mono';font-size:.8rem}
+  .drawer .body{overflow-y:auto;padding:8px 18px 24px}
+  .gterm{border-bottom:1px solid var(--line);padding:13px 0}
+  .gterm:last-child{border-bottom:none}
+  .gterm .gname{font-family:'IBM Plex Mono';font-weight:600;color:var(--foam);font-size:.92rem;margin-bottom:3px}
+  .gterm .gdef{font-size:.88rem;color:#C3D7DE}
+  .gterm.hot{animation:flash 1.1s ease}
+  @keyframes flash{0%,100%{background:transparent}25%{background:rgba(95,208,197,.14)}}
+  .gempty{color:var(--muted);font-size:.88rem;padding:18px 0}
+
+  /* victory */
+  .victory .title{color:var(--foam)}
+  .scorecard{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0}
+  @media(max-width:520px){.scorecard{grid-template-columns:1fr}}
+  .scorecard .sc{background:var(--abyss-3);border:1px solid var(--line);border-radius:10px;padding:14px}
+  .scorecard .sc .n{font-family:'Bricolage Grotesque';font-weight:800;font-size:1.5rem;line-height:1}
+  .scorecard .sc .l{font-family:'IBM Plex Mono';font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:5px}
+  .recap{list-style:none;padding:0;margin:14px 0}
+  .recap li{padding:9px 0 9px 26px;border-bottom:1px solid var(--line);position:relative;font-size:.92rem}
+  .recap li::before{content:"🦞";position:absolute;left:0;top:8px;font-size:.85rem}
+  .footnote{font-size:.78rem;color:var(--muted);margin-top:18px}
+
+  a{color:var(--foam)}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header class="hud">
+  <div class="hud-row">
+    <div class="logo"><span class="crab">🦞</span><span>Operation&nbsp;Molty</span></div>
+    <div class="hud-spacer"></div>
+    <div class="stat">
+      <span class="lab">Budget left</span>
+      <span class="val" id="moneyVal">$250</span>
+      <div class="meter"><i id="moneyBar" style="width:100%;background:var(--sand)"></i></div>
+    </div>
+    <div class="stat">
+      <span class="lab">Hull integrity (safety)</span>
+      <span class="val" id="safeVal">70</span>
+      <div class="meter"><i id="safeBar" style="width:70%;background:var(--foam)"></i></div>
+    </div>
+    <button class="guide-btn" id="guideOpen">📖 Field Guide · <b id="guideCount">0</b></button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="depthrail" id="depthrail"></div>
+  <div id="stageMount"></div>
+</div>
+
+<!-- Field Guide drawer -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="Field Guide glossary">
+  <header>
+    <h3>📖 Field Guide</h3>
+    <button class="close" id="guideClose">Close</button>
+  </header>
+  <div class="body" id="guideBody">
+    <p class="gempty">Tap any <span style="color:var(--foam);border-bottom:1.5px dotted var(--foam)">underlined term</span> in the mission to decode it. Decoded terms collect here.</p>
+  </div>
+</aside>
+
+<script>
+/* ============================================================
+   STATE
+============================================================ */
+const state = {
+  money: 250,
+  moneyMax: 250,
+  safety: 70,
+  stageIndex: 0,
+  answered: false,
+  learned: {},          // term -> def
+};
+
+/* ============================================================
+   GLOSSARY  (every term tappable -> Field Guide)
+   Authoring helper: t('node') inserts a tappable term.
+============================================================ */
+const GLOSSARY = {
+  "open-source": "Software whose code is public and free to read, use, and modify. OpenClaw is open-source — the program costs nothing; you only pay for the AI brain and any hardware/hosting.",
+  "local": "Running on a computer you control, not on someone else's servers. OpenClaw is 'local-first': it lives on your own machine.",
+  "host": "The specific computer (or server) a program runs on. Whatever you pick as the host, the agent can potentially touch the files and programs on it.",
+  "agent": "An AI that doesn't just chat back — it can take actions: run commands, browse, send messages, edit files. Power and risk both come from this.",
+  "gateway": "OpenClaw's always-running control center. It connects your chat apps to the agent and manages sessions. The repo calls it the 'control plane'.",
+  "blast radius": "How much damage something could do if it goes wrong. Putting the agent on a machine full of personal files = large blast radius. A dedicated/empty machine = small.",
+  "Raspberry Pi": "A tiny, cheap (~$80) low-power computer, popular for always-on hobby projects. A common 'dedicated box' for running an assistant away from your main machine.",
+  "VPS": "Virtual Private Server — a small computer you rent in a data center, billed monthly (often a few dollars). Always-on, but it lives on the internet so it must be locked down carefully.",
+  "user account": "A separate login on your computer with its own files and permissions. Running the agent under its own account walls it off from your personal stuff.",
+  "untrusted input": "Any message or content the agent reads that didn't come from you — a stranger's DM, a web page. It must be treated as possibly hostile, never automatically obeyed.",
+  "Node.js": "A 'runtime' — a program that lets JavaScript code run directly on your computer (outside a web browser). OpenClaw is built on it, so you install Node.js first.",
+  "runtime": "The underlying engine a program needs in order to run. OpenClaw's runtime is Node.js.",
+  "terminal": "Also called the 'command line' — a text window where you type commands to your computer instead of clicking. This is where you'll run the install commands.",
+  "LTS": "Long-Term Support — a software version that gets maintained and patched for years. Safer/steadier than the newest experimental release.",
+  "version manager": "A tool (like 'nvm') that lets you install and switch between multiple versions of Node.js easily. Handy but one extra layer to learn.",
+  "npm": "Node's package manager — the tool that downloads and installs Node programs from the internet. You'll use it to fetch OpenClaw.",
+  "package": "A bundle of code published so others can install it with one command. 'openclaw' is a package.",
+  "global install": "Installing a program (with the -g flag) so its command works from anywhere on your computer, not just one folder.",
+  "CLI": "Command-Line Interface — controlling a program by typing commands. 'openclaw ...' is a CLI.",
+  "daemon": "A program that runs quietly in the background and keeps running, even after you close the terminal. This is what keeps Molty 'always on'.",
+  "onboarding wizard": "A guided, step-by-step setup that asks you questions and configures things for you. OpenClaw's is 'openclaw onboard'.",
+  "channel": "The app you actually message your assistant through — WebChat, Telegram, Discord, WhatsApp, etc.",
+  "WebChat": "A simple chat window in your browser, served by your own gateway. Nothing extra to expose to the outside world — the safest first channel.",
+  "prompt injection": "An attack where hidden instructions are buried inside a message, email, or web page, hoping the agent reads them and obeys them as if they were your orders. The headline risk of agents.",
+  "allowlist": "An explicit list of who is permitted to talk to the agent. Anyone not on it is ignored. The opposite of leaving the door open to everyone.",
+  "DM pairing": "OpenClaw's safe default: a stranger who messages your bot just gets a pairing code and is ignored until YOU approve them. Keeps unknown people from driving the agent.",
+  "doctor": "A built-in check ('openclaw doctor') that scans your setup and warns about risky or misconfigured settings before they bite you.",
+  "LLM": "Large Language Model — the AI trained on huge amounts of text that can read and write language. It's the 'brain' the agent borrows to think.",
+  "API": "Application Programming Interface — a doorway that lets one program talk to another over the internet. OpenClaw calls the AI provider's API to get answers.",
+  "model": "A specific AI brain you can pick, e.g. Claude, GPT, Gemini. Each has different strengths, speeds, and prices.",
+  "flagship": "A provider's strongest, newest model. Best quality (recommended for an agent that can act), usually a bit pricier per use.",
+  "tokens": "The units AI providers bill by — roughly chunks of words read and written. More conversation = more tokens = more cost.",
+  "local model": "An AI brain that runs on your own computer instead of a paid cloud. Free to run, private, but needs a powerful machine and is usually weaker.",
+  "API key": "A secret password-like string (Claude's start with sk-ant-...) that proves to the provider it's really your account making requests — and that bills your account. Guard it like a password.",
+  "billing": "Connecting a payment method and adding credit so the provider will answer your agent's requests. The software is free; the thinking is pay-as-you-go.",
+  "credits": "Prepaid balance with the AI provider that gets drawn down as your agent uses tokens.",
+  "spend limit": "A cap you set on the provider's side so usage can't exceed a chosen dollar amount — your safety net against a runaway agent running up a huge bill.",
+  "revoke": "Instantly disabling an API key so it stops working — what you do the moment a key leaks or you suspect it's exposed.",
+  "environment variable": "A setting stored in your system (not typed into code) used to hand secrets like API keys to programs safely.",
+  "config file": "A plain text file (OpenClaw uses ~/.openclaw/openclaw.json) that stores your settings, like which model to use.",
+  "sandbox": "A walled-off space where the agent can run risky things without reaching your real files — recommended once others (not just you) can message it.",
+};
+
+// turn "node" style key text into a tappable button
+function t(key, label){
+  const def = GLOSSARY[key];
+  const text = label || key;
+  if(!def){ return text; }
+  return `<button class="t" data-term="${encodeURIComponent(key)}">${text}</button>`;
+}
+function cmd(lines, cap){
+  const body = lines.map(l=>{
+    if(l.startsWith('#')) return `<span class="c-note">${l}</span>`;
+    return `<span class="c-prompt">$ </span>${l}`;
+  }).join('\n');
+  return (cap?`<div class="cmd-cap">${cap}</div>`:'') + `<div class="cmd">${body}</div>`;
+}
+
+/* ============================================================
+   STAGES
+============================================================ */
+const STAGES = [
+
+/* 0 — BRIEFING */
+{
+  type:'intro',
+  eyebrow:'Mission briefing · Depth 0m',
+  title:'Operation Molty',
+  render(){
+    return `
+    <p class="story">A space lobster needs a home. Your job: install OpenClaw on your own machine and give it a brain — Claude — without sinking your own ship along the way.</p>
+    <div class="teach">
+      <p>${t('agent','OpenClaw is an AI agent')}: not just a chatbot, but software that can take real actions on a computer — run commands, browse, message people. That's exactly why it's powerful, and exactly why installing it <em>safely</em> is the whole point of this mission.</p>
+      <p>You'll do every step you'd do in real life, in order, with the real commands. Two gauges ride along at the top:</p>
+      <p><b style="color:var(--sand)">Budget</b> — in-game money that mirrors real costs. The ${t('open-source','OpenClaw software is free and open-source')}; what costs money is the AI ${t('API','brain')} and any hardware. <br>
+      <b style="color:var(--foam)">Hull integrity</b> — your safety score. Convenient shortcuts often poke holes in it. The game will always show you the trade before you choose.</p>
+    </div>
+    <div class="callout safe"><span class="ctitle">How to play</span>Read the situation, weigh the pros &amp; cons shown on each option, then choose. Tap any <span style="color:var(--foam);border-bottom:1.5px dotted var(--foam)">underlined word</span> to decode the jargon into plain language — it gets saved in your Field Guide.</div>
+    `;
+  },
+  cta:'Begin the dive ↓'
+},
+
+/* 1 — WHERE WILL MOLTY LIVE */
+{
+  eyebrow:'Stage 1 · Depth 10m',
+  title:'Where will Molty live?',
+  story:'Before anything installs, decide which computer becomes the agent\'s home.',
+  render(){ return `
+    <div class="teach">
+      <p>OpenClaw is ${t('local','local-first')}: it runs on a machine <em>you</em> own, called the ${t('host','host')}. Here's the catch — by default the ${t('agent','agent')} can read files and run programs on its host. So choosing the host <em>is</em> a security decision, not just a convenience one.</p>
+      <p>Think about ${t('blast radius','blast radius')}: if the agent ever misbehaves or gets tricked, how much could it reach?</p>
+    </div>`; },
+  choices:[
+    { name:'Your everyday laptop', tag:{cls:'free',txt:'$0'}, cost:0, safety:-15,
+      pros:['Free — nothing to buy','Already set up and familiar'],
+      cons:['Agent shares a machine with your photos, documents, saved logins','Largest blast radius if something goes wrong'],
+      result:'Cheapest path, but you just handed the agent a house full of your stuff. Doable for learning — only if you stay strict on the security stages ahead.' },
+    { name:'A dedicated cheap box (Raspberry Pi)', tag:{cls:'cost',txt:'–$80'}, cost:80, safety:+18, rec:true,
+      pros:['Keeps the agent away from your personal data','Small blast radius — a compromise stays contained','Low power, can run 24/7'],
+      cons:['Costs about $80','A little extra setup'],
+      result:'The pro move. A ${PI} lives in the corner doing one job, so even a bad day can\'t reach your real files.' },
+    { name:'A rented cloud server (VPS)', tag:{cls:'cost',txt:'–$6'}, cost:6, safety:+4,
+      pros:['Always-on and isolated from your home computer','Reach it from anywhere'],
+      cons:['Monthly fee','Lives on the open internet — must be locked down carefully','More advanced to secure'],
+      result:'Isolated from your home machine, which is good — but a ${VPS} on the public internet raises the stakes on every security step. Fine if you\'re careful.' },
+  ]
+},
+
+/* 2 — CLEAR THE DECK */
+{
+  eyebrow:'Stage 2 · Depth 20m',
+  title:'Clear the deck',
+  story:'Whatever host you picked, reduce what the agent could touch before it arrives.',
+  render(){ return `
+    <div class="teach">
+      <p>Real installers do a quick safety pass first, because the agent treats stranger messages and web pages as ${t('untrusted input','untrusted input')} — and on its host it has real reach. Less exposed = safer.</p>
+      <p>The cleanest move is to give Molty its own ${t('user account','user account')} so it's walled off from your personal files.</p>
+    </div>`; },
+  choices:[
+    { name:'Create a separate user account for Molty', tag:{cls:'free',txt:'$0'}, cost:0, safety:+12, rec:true,
+      pros:['Walls the agent off from your personal files','Easy to wipe and start over','Costs nothing but a few minutes'],
+      cons:['One extra setup step','You switch accounts to manage it'],
+      result:'Smart. Even on a shared machine, its own ${ACCOUNT} keeps the agent fenced in.' },
+    { name:'Just install under my main account', tag:{cls:'free',txt:'$0'}, cost:0, safety:-12,
+      pros:['Fastest — nothing extra to set up'],
+      cons:['Agent runs with full reach over your personal files','No wall between Molty and your data'],
+      result:'Faster now, riskier later. You\'ll want the security stages ahead to be airtight, since nothing is fencing the agent in.' },
+  ]
+},
+
+/* 3 — INSTALL NODE */
+{
+  eyebrow:'Stage 3 · Depth 30m',
+  title:'Lay the foundation: Node.js',
+  story:'OpenClaw is built on Node.js, so that goes in first.',
+  render(){ return `
+    <div class="teach">
+      <p>${t('Node.js','Node.js')} is a ${t('runtime','runtime')} — the engine that lets OpenClaw\'s code actually run on your computer. You install it from the ${t('terminal','terminal')} (the text window where you type commands instead of clicking).</p>
+      <p>OpenClaw wants <b>Node 24</b> (recommended) or <b>Node 22.19+</b>. After installing, you confirm the version:</p>
+      ${cmd(['node --version','# should print v24.x  (or v22.19 or higher)'],'In your terminal')}
+      <p>Two common ways to get Node — pick one:</p>
+    </div>`; },
+  choices:[
+    { name:'Official installer from nodejs.org', tag:{cls:'free',txt:'$0'}, cost:0, safety:+2, rec:true,
+      pros:['Simplest — download, double-click, done','Great for a first install'],
+      cons:['Switching Node versions later is manual'],
+      result:'Clean and beginner-friendly. Grab the ${LTS} build from nodejs.org, install, and confirm with node --version.' },
+    { name:'Use a version manager (nvm)', tag:{cls:'free',txt:'$0'}, cost:0, safety:+2,
+      pros:['Switch between Node versions in one command','Preferred by developers juggling projects'],
+      cons:['One more tool to learn','Slightly more setup'],
+      result:'Flexible and future-proof. A ${NVM} lets you run nvm install 24 and switch versions anytime — just more to learn up front.' },
+  ]
+},
+
+/* 4 — INSTALL OPENCLAW */
+{
+  eyebrow:'Stage 4 · Depth 40m',
+  title:'Install OpenClaw itself',
+  story:'With Node in place, fetch the actual program.',
+  render(){ return `
+    <div class="teach">
+      <p>${t('npm','npm')} (which came with Node) downloads the ${t('package','openclaw package')} and installs it ${t('global install','globally')} — the <code>-g</code> flag — so the <code>openclaw</code> command works from anywhere. That gives you a ${t('CLI','command-line tool')} called <code>openclaw</code>.</p>
+      ${cmd(['npm install -g openclaw@latest','# downloads &amp; installs the openclaw command'],'The real install command')}
+      <p>One choice worth knowing: which release channel to ride.</p>
+    </div>`; },
+  choices:[
+    { name:'Stable channel (the @latest tag)', tag:{cls:'free',txt:'$0'}, cost:0, safety:+5, rec:true,
+      pros:['Tested, tagged releases','Fewest surprises for a first install'],
+      cons:['You get new features a little later than the bleeding edge'],
+      result:'The sensible default. @latest pulls the stable, tested release — exactly what you want while learning.' },
+    { name:'Beta / dev channel', tag:{cls:'free',txt:'$0'}, cost:0, safety:-6,
+      pros:['Newest features first'],
+      cons:['Less tested — things can break','Companion apps may be missing','Not ideal for a beginner'],
+      result:'Living on the edge. Newer, but rougher — more breakage and a thinner safety net. Better once you know your way around.' },
+  ]
+},
+
+/* 5 — ONBOARD + GATEWAY */
+{
+  eyebrow:'Stage 5 · Depth 50m',
+  title:'Wake the gateway',
+  story:'Run the guided setup and start the always-on control center.',
+  render(){ return `
+    <div class="teach">
+      <p>OpenClaw\'s recommended setup is a single command that launches an ${t('onboarding wizard','onboarding wizard')} — it walks you through the gateway, workspace, channels and skills, asking questions as it goes.</p>
+      ${cmd(['openclaw onboard --install-daemon','','# then check it\'s alive:','openclaw gateway status'],'Guided setup')}
+      <p>The ${t('gateway','gateway')} is OpenClaw\'s control center. The <code>--install-daemon</code> part installs it as a ${t('daemon','daemon')} — a background program that keeps running so Molty is always on, even after you close the terminal.</p>
+    </div>`; },
+  choices:[
+    { name:'Run as an always-on daemon', tag:{cls:'free',txt:'$0'}, cost:0, safety:+5, rec:true,
+      pros:['Molty stays awake and answers anytime','Survives reboots and closed terminals','The recommended setup'],
+      cons:['Always-on means you should keep the security stages tight'],
+      result:'Done. The ${DAEMON} is installed and the gateway reports healthy. Molty is awake — now let\'s decide how you\'ll talk to it.' },
+    { name:'Run it manually in the foreground', tag:{cls:'free',txt:'$0'}, cost:0, safety:0,
+      pros:['Nothing runs when you\'re not using it','Easy to watch live logs while learning'],
+      cons:['Stops the moment you close the terminal','Not "always-on"'],
+      result:'A fine way to learn — you start it by hand and watch it work, but it sleeps when you close the window.' },
+  ]
+},
+
+/* 6 — CHANNEL */
+{
+  eyebrow:'Stage 6 · Depth 60m',
+  title:'Pick how you\'ll message Molty',
+  story:'The onboarding wizard asks which channel to connect.',
+  render(){ return `
+    <div class="teach">
+      <p>A ${t('channel','channel')} is simply the app you message the assistant through. The big safety idea: any channel that can receive messages from strangers is a door for ${t('untrusted input','untrusted input')}. The fewer doors, the better — especially on your first install.</p>
+    </div>`; },
+  choices:[
+    { name:'WebChat (browser window)', tag:{cls:'free',txt:'$0'}, cost:0, safety:+10, rec:true,
+      pros:['Simplest — runs from your own gateway','Nothing exposed to the public internet','Perfect for a first install'],
+      cons:['Only works at your computer, not from your phone out and about'],
+      result:'The safe starter. ${WEBCHAT} talks only to your local gateway, so there\'s no public door to guard yet.' },
+    { name:'Telegram', tag:{cls:'free',txt:'$0'}, cost:0, safety:-4,
+      pros:['Message Molty from your phone, anywhere','Quick to set up'],
+      cons:['It\'s a public messaging surface — you must control who can DM it','One more door to lock'],
+      result:'Convenient from your pocket — but now strangers <em>can</em> try to DM the bot, so the next stage (locking it down) matters even more.' },
+    { name:'Discord or WhatsApp', tag:{cls:'free',txt:'$0'}, cost:0, safety:-6,
+      pros:['Powerful, integrates with servers/groups you already use'],
+      cons:['More moving parts to configure','Bigger exposure if a group is involved','More to keep secure'],
+      result:'Capable but heavier. More surfaces means more to lock down — fine later, a lot to juggle on day one.' },
+  ]
+},
+
+/* 7 — SECURITY LOCKDOWN */
+{
+  eyebrow:'Stage 7 · Depth 70m · ⚠ critical',
+  title:'Lock the airlock',
+  story:'This is the stage that decides whether your agent is safe or a liability.',
+  render(){ return `
+    <div class="teach">
+      <p>Here\'s the real danger with agents: ${t('prompt injection','prompt injection')} — someone hides instructions inside a message or a web page hoping your agent reads them and <em>obeys</em> them as if they were your orders. The defense is to control who can reach it at all.</p>
+      <p>OpenClaw ships with a safe default called ${t('DM pairing','DM pairing')}: a stranger who messages your bot just gets a pairing code and is ignored until <em>you</em> approve them. You can also keep an ${t('allowlist','allowlist')} of approved people, and run the built-in ${t('doctor','doctor')} check.</p>
+      ${cmd(['openclaw doctor','# flags risky or misconfigured settings','','openclaw pairing approve telegram 1234','# you approve a sender on purpose'],'Safety checks')}
+    </div>`; },
+  choices:[
+    { name:'Keep pairing on · allowlist just yourself · run doctor', tag:{cls:'free',txt:'$0'}, cost:0, safety:+20, rec:true,
+      pros:['Only people you approve can drive the agent','doctor catches misconfigurations before they bite','Strongest posture for almost no effort'],
+      cons:['You must approve new people on purpose (this is the point)'],
+      result:'Airlock sealed. Pairing stays on, only you are on the ${ALLOW}, and ${DOC} gives you a clean bill of health. This is what "safe" looks like.' },
+    { name:'Open it to everyone for convenience', tag:{cls:'bad',txt:'risky'}, cost:0, safety:-30,
+      pros:['Anyone can message it without you approving them'],
+      cons:['Strangers can attempt to drive your agent','Wide open to prompt-injection attacks','Exactly what security researchers warn against'],
+      result:'Dangerous. You just removed the lock that makes this tool safe to run. Anyone can knock — and a hostile message could try to hijack the agent. Strongly reconsider.' },
+  ]
+},
+
+/* 8 — CHOOSE BRAIN */
+{
+  eyebrow:'Stage 8 · Depth 80m',
+  title:'Give Molty a brain',
+  story:'The agent has no intelligence of its own — it borrows one.',
+  render(){ return `
+    <div class="teach">
+      <p>By itself OpenClaw is just plumbing. The thinking comes from an ${t('LLM','LLM')} — a ${t('model','model')} you connect over its ${t('API','API')}. This is the part that actually costs money: you pay the provider per ${t('tokens','token')} of conversation.</p>
+      <p>Our mission ends by wiring up <b style="color:var(--coral-soft)">Claude</b>, but here\'s the honest landscape — and note you can switch later by changing one line:</p>
+    </div>`; },
+  choices:[
+    { name:'Claude (Anthropic)', tag:{cls:'rec',txt:'mission target'}, cost:0, safety:+6, rec:true, advance:true,
+      pros:['Strong reasoning and tool-use — well suited to an agent that takes actions','A current ${FLAG} is recommended for agents','This is what we\'ll connect'],
+      cons:['Pay-as-you-go like all cloud models'],
+      result:'Locked in: Claude is the brain. Next you\'ll get a key from Anthropic and plug it in — the finish line.' },
+    { name:'GPT (OpenAI) / Gemini (Google) / DeepSeek', tag:{cls:'free',txt:'explore'}, cost:0, safety:+2, advance:true,
+      pros:['All capable cloud models with different price/speed trade-offs','Easy to swap — model choice is one config line'],
+      cons:['Still pay-as-you-go','Not the brain this particular mission wires up'],
+      result:'All solid choices in real life. Because swapping models is a one-line change, you can try them later — but for this mission we\'ll bring Claude online.' },
+    { name:'A local model on your own machine', tag:{cls:'free',txt:'$0 usage'}, cost:0, safety:+2, advance:true,
+      pros:['No per-message cost','Most private — nothing leaves your computer'],
+      cons:['Needs a powerful computer','Usually weaker than flagship cloud models','Can struggle to drive an agent reliably'],
+      result:'Free and private — but a ${LOCAL} needs muscle and often isn\'t sharp enough to run an agent well. For the mission, we\'ll connect Claude.' },
+  ]
+},
+
+/* 9 — GET API KEY */
+{
+  eyebrow:'Stage 9 · Depth 90m',
+  title:'Get your Claude API key',
+  story:'You do this part yourself, on Anthropic\'s site — never hand your key to anyone.',
+  render(){ return `
+    <div class="teach">
+      <p>To let your agent use Claude, you need an ${t('API key','API key')}: a secret string (Claude\'s start with <code>sk-ant-</code>) that proves the requests are yours and bills your account. The steps, on your own machine:</p>
+      <p>1 · Go to the Anthropic Console (console.anthropic.com) and create an account.<br>
+         2 · Set up ${t('billing','billing')} and add a small amount of ${t('credits','credit')} — there\'s usually a minimum (often around $5; check current pricing).<br>
+         3 · Create the key, then copy it <em>once</em> and keep it somewhere safe.</p>
+      <div class="callout danger"><span class="ctitle">Treat it like a password</span>Never paste your key into a random website or chat (including here), never put it in public code, and ${t('revoke','revoke')} it immediately if it ever leaks. It spends real money.</div>
+      <p>Now, a money-and-safety decision every careful person makes:</p>
+    </div>`; },
+  choices:[
+    { name:'Set a spend limit before generating the key', tag:{cls:'cost',txt:'–$5 credit'}, cost:5, safety:+10, rec:true,
+      pros:['A runaway agent literally cannot exceed your cap','Peace of mind while you experiment','Takes 30 seconds in the console'],
+      cons:['You\'ll top up if you genuinely use more (a good problem)'],
+      result:'Wise. With a ${LIMIT} in place, even a buggy loop can\'t drain your card. You add ~$5 of credit and you\'re ready.' },
+    { name:'Skip the limit, just add credit', tag:{cls:'cost',txt:'–$5 credit'}, cost:5, safety:-8,
+      pros:['One less step'],
+      cons:['No ceiling if the agent loops or is misused','Surprise bills are the most common beginner regret'],
+      result:'Credit\'s added and it\'ll work — but with no cap, an agent stuck in a loop could spend more than you meant. You can add a ${LIMIT} anytime; do it soon.' },
+  ]
+},
+
+/* 10 — CONNECT THE KEY (FINISH) */
+{
+  eyebrow:'Stage 10 · Depth 100m · the finish line',
+  title:'Connect Claude to OpenClaw',
+  story:'Two pieces: tell OpenClaw which brain to use, and hand it the key — safely.',
+  render(){ return `
+    <div class="teach">
+      <p>The easiest path: re-run onboarding and choose Anthropic / Claude when asked — it\'ll prompt you to paste your ${t('API key','key')}, then store it locally in your OpenClaw ${t('config file','config')} (under <code>~/.openclaw</code>). It only ever travels to Anthropic when the agent thinks — never to anyone else.</p>
+      ${cmd(['openclaw onboard','# pick Anthropic / Claude, paste your sk-ant-... key when asked'],'Plug in the brain')}
+      <p>Prefer doing it by hand? Point the model at Claude in <code>~/.openclaw/openclaw.json</code> and supply the key via the auth step or an ${t('environment variable','environment variable')} (so the secret isn\'t sitting in plain code):</p>
+      ${cmd(['{','  "agent": {','    "model": "anthropic/claude-opus-4-8"','  }','}','# example only — onboarding lists the exact model ids available'],'~/.openclaw/openclaw.json')}
+      <p>Confirm everything\'s healthy, then say hello through your channel:</p>
+      ${cmd(['openclaw doctor','# green light = key + model wired up','','# now message Molty from WebChat/Telegram:','Hello Molty 🦞'],'Final check')}
+    </div>`; },
+  choices:[
+    { name:'Plug in the key and send the first message', tag:{cls:'rec',txt:'finish'}, cost:0, safety:0, rec:true, finish:true,
+      pros:['Claude is now the brain','doctor confirms the connection','Molty answers you for the first time'],
+      cons:[],
+      result:'' },
+  ]
+},
+
+];
+
+/* ============================================================
+   RESULT-TEXT TERM SHORTCUTS  (${PI} etc -> tappable terms)
+============================================================ */
+const RESULT_TERMS = {
+  PI:['Raspberry Pi','dedicated box'], VPS:['VPS','rented server'], ACCOUNT:['user account','separate account'],
+  LTS:['LTS','LTS'], NVM:['version manager','version manager'], DAEMON:['daemon','daemon'],
+  WEBCHAT:['WebChat','WebChat'], ALLOW:['allowlist','allowlist'], DOC:['doctor','doctor'],
+  FLAG:['flagship','flagship model'], LOCAL:['local model','local model'], LIMIT:['spend limit','spend limit'],
+};
+function expandResult(str){
+  return str.replace(/\$\{(\w+)\}/g,(m,k)=>{
+    const e = RESULT_TERMS[k]; return e ? t(e[0], e[1]) : m;
+  });
+}
+
+/* ============================================================
+   RENDER ENGINE
+============================================================ */
+const mount = document.getElementById('stageMount');
+
+function renderDepthRail(){
+  const rail = document.getElementById('depthrail');
+  rail.innerHTML = STAGES.map((s,i)=>{
+    let cls='dot';
+    if(i<state.stageIndex) cls+=' done';
+    else if(i===state.stageIndex) cls+=' cur';
+    return `<span class="${cls}"></span>`;
+  }).join('');
+}
+
+function renderStage(){
+  const s = STAGES[state.stageIndex];
+  state.answered=false;
+  renderDepthRail();
+
+  if(s.type==='intro'){
+    mount.innerHTML = `<div class="card">
+      <p class="eyebrow">${s.eyebrow}</p>
+      <h1 class="title">${s.title}</h1>
+      ${s.render()}
+      <div class="btnrow"><button class="btn" id="advance">${s.cta}</button></div>
+    </div>`;
+    document.getElementById('advance').onclick = ()=>{ next(); };
+    bindTerms();
+    return;
+  }
+
+  const choicesHTML = s.choices.map((c,i)=>`
+    <button class="choice" data-i="${i}">
+      <div class="chead">
+        <span class="cname">${c.name}</span>
+        ${c.rec?'<span class="tag rec">recommended</span>':''}
+        ${c.tag?`<span class="tag ${c.tag.cls==='bad'?'':c.tag.cls}" style="${c.tag.cls==='bad'?'color:var(--coral-soft);border-color:rgba(255,107,87,.5)':''}">${c.tag.txt}</span>`:''}
+      </div>
+      <div class="pc">
+        <div class="pro"><h4>Pros</h4><ul>${c.pros.map(p=>`<li>${expandResult(p)}</li>`).join('')}</ul></div>
+        <div class="con"><h4>Cons</h4><ul>${c.cons.map(p=>`<li>${expandResult(p)}</li>`).join('')}</ul></div>
+      </div>
+    </button>`).join('');
+
+  mount.innerHTML = `<div class="card">
+    <p class="eyebrow">${s.eyebrow}</p>
+    <h1 class="title">${s.title}</h1>
+    ${s.story?`<p class="story">${s.story}</p>`:''}
+    ${s.render()}
+    <div class="choices" id="choices">${choicesHTML}</div>
+    <div id="resultSlot"></div>
+  </div>`;
+
+  document.querySelectorAll('#choices .choice').forEach(btn=>{
+    btn.onclick = ()=> choose(parseInt(btn.dataset.i,10));
+  });
+  bindTerms();
+}
+
+function choose(i){
+  if(state.answered) return;
+  state.answered=true;
+  const s = STAGES[state.stageIndex];
+  const c = s.choices[i];
+
+  // apply effects
+  if(c.cost) changeMoney(-c.cost);
+  if(c.safety) changeSafety(c.safety);
+
+  // lock & dim other choices
+  document.querySelectorAll('#choices .choice').forEach((b,idx)=>{
+    b.style.pointerEvents='none';
+    if(idx!==i){ b.style.opacity='.4'; }
+    else { b.style.borderColor='var(--foam)'; }
+  });
+
+  const deltas = [];
+  if(c.cost) deltas.push(`<span class="delta spend">– $${c.cost}</span>`);
+  if(c.safety>0) deltas.push(`<span class="delta up">▲ Hull +${c.safety}</span>`);
+  if(c.safety<0) deltas.push(`<span class="delta down">▼ Hull ${c.safety}</span>`);
+
+  const slot = document.getElementById('resultSlot');
+  if(c.finish){
+    slot.innerHTML = `<div class="result">
+      <div class="deltas">${deltas.join('')}</div>
+      <div class="btnrow"><button class="btn" id="advance">Surface 🦞</button></div>
+    </div>`;
+    document.getElementById('advance').onclick = ()=> renderVictory();
+  } else {
+    slot.innerHTML = `<div class="result">
+      <p class="rtitle">${c.safety<-10?'⚠ ':''}${c.rec?'✓ ':''}Outcome</p>
+      <p>${expandResult(c.result)}</p>
+      <div class="deltas">${deltas.join('')}</div>
+      <div class="btnrow"><button class="btn" id="advance">Descend deeper ↓</button></div>
+    </div>`;
+    document.getElementById('advance').onclick = ()=> next();
+  }
+  bindTerms();
+  slot.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function next(){
+  state.stageIndex++;
+  if(state.stageIndex>=STAGES.length){ renderVictory(); return; }
+  window.scrollTo({top:0,behavior:'smooth'});
+  renderStage();
+}
+
+/* ============================================================
+   VICTORY
+============================================================ */
+function renderVictory(){
+  renderDepthRail();
+  document.getElementById('depthrail').querySelectorAll('.dot').forEach(d=>d.classList.add('done'));
+  const spent = state.moneyMax - state.money;
+  const safeWord = state.safety>=85?'Watertight':state.safety>=65?'Seaworthy':state.safety>=45?'Taking on water':'Leaky — patch it up';
+  mount.innerHTML = `<div class="card victory">
+    <p class="eyebrow">Mission complete · Surface reached</p>
+    <h1 class="title">Molty is alive. 🦞</h1>
+    <p class="story">You sent your first message and Claude answered through your channel. You installed an AI agent the same way you would in real life — and you did it without sinking your ship.</p>
+
+    <div class="scorecard">
+      <div class="sc"><div class="n">$${spent}</div><div class="l">Budget spent of $${state.moneyMax}</div></div>
+      <div class="sc"><div class="n">${state.safety}</div><div class="l">Hull integrity</div></div>
+      <div class="sc"><div class="n">${Object.keys(state.learned).length}</div><div class="l">Terms decoded</div></div>
+    </div>
+    <div class="callout ${state.safety>=65?'safe':'danger'}"><span class="ctitle">Safety verdict</span>${safeWord}. ${state.safety<65?'Some convenient shortcuts cost you hull integrity — in real life that means revisiting your security settings (pairing, allowlist, spend limit) before you lean on this agent.':'You kept the agent fenced in, the door locked, and a spend cap on. That\'s genuinely the safe way to run one of these.'}</div>
+
+    <p class="rtitle" style="font-family:'Bricolage Grotesque';font-weight:700;margin:22px 0 4px">What you actually learned to do</p>
+    <ul class="recap">
+      <li>Chose a <b>host</b> with its blast radius in mind, and fenced the agent off from your personal files.</li>
+      <li>Installed <b>Node.js</b>, then <b>OpenClaw</b> with <code>npm install -g openclaw@latest</code>.</li>
+      <li>Ran <code>openclaw onboard --install-daemon</code> to set up the always-on gateway.</li>
+      <li>Picked a <b>channel</b> and locked it down with <b>DM pairing</b>, an <b>allowlist</b>, and <code>openclaw doctor</code>.</li>
+      <li>Got a Claude <b>API key</b>, set a <b>spend limit</b>, and guarded the key like a password.</li>
+      <li>Connected the brain via <code>"model": "anthropic/claude-..."</code> and confirmed with <code>openclaw doctor</code>.</li>
+    </ul>
+
+    <div class="callout danger"><span class="ctitle">Before you do this for real</span>An agent that can act is powerful and genuinely risky. Keep it on a machine you don\'t mind exposing, never open it to strangers, keep a spend limit on, and remember: anything it reads from the outside is <em>untrusted</em>. When in doubt, lock it down tighter.</div>
+
+    <div class="btnrow">
+      <button class="btn" id="restart">Play again</button>
+      <button class="btn ghost" id="openGuide2">Review Field Guide (${Object.keys(state.learned).length})</button>
+    </div>
+    <p class="footnote">A teaching game. Commands reflect OpenClaw\'s real setup, but always follow the official docs (docs.openclaw.ai) for the current steps and current Claude pricing before installing for real.</p>
+  </div>`;
+  document.getElementById('restart').onclick = ()=>{
+    state.money=250; state.moneyMax=250; state.safety=70; state.stageIndex=0; state.answered=false;
+    updateHUD(); window.scrollTo({top:0}); renderStage();
+  };
+  document.getElementById('openGuide2').onclick = openDrawer;
+  bindTerms();
+}
+
+/* ============================================================
+   HUD updates
+============================================================ */
+function changeMoney(d){ state.money=Math.max(0,state.money+d); updateHUD(); }
+function changeSafety(d){ state.safety=Math.max(0,Math.min(100,state.safety+d)); updateHUD(); }
+function updateHUD(){
+  document.getElementById('moneyVal').textContent = '$'+state.money;
+  document.getElementById('moneyBar').style.width = Math.round(state.money/state.moneyMax*100)+'%';
+  const sv=document.getElementById('safeVal'); sv.textContent = state.safety;
+  const sb=document.getElementById('safeBar');
+  sb.style.width = state.safety+'%';
+  sb.style.background = state.safety>=65?'var(--foam)':state.safety>=40?'var(--warn)':'var(--bad)';
+  sv.style.color = state.safety>=65?'var(--foam)':state.safety>=40?'var(--warn)':'var(--bad)';
+}
+
+/* ============================================================
+   FIELD GUIDE (terms)
+============================================================ */
+function bindTerms(){
+  document.querySelectorAll('.t').forEach(btn=>{
+    if(btn.dataset.bound) return;
+    btn.dataset.bound='1';
+    btn.onclick = ()=>{
+      const key = decodeURIComponent(btn.dataset.term);
+      learnTerm(key);
+      openDrawer(key);
+    };
+  });
+}
+function learnTerm(key){
+  if(!state.learned[key]){
+    state.learned[key]=GLOSSARY[key];
+    document.getElementById('guideCount').textContent = Object.keys(state.learned).length;
+  }
+}
+function renderGuide(highlight){
+  const body=document.getElementById('guideBody');
+  const keys=Object.keys(state.learned);
+  if(keys.length===0){
+    body.innerHTML=`<p class="gempty">Tap any <span style="color:var(--foam);border-bottom:1.5px dotted var(--foam)">underlined term</span> in the mission to decode it. Decoded terms collect here.</p>`;
+    return;
+  }
+  body.innerHTML = keys.map(k=>`
+    <div class="gterm ${k===highlight?'hot':''}" data-k="${encodeURIComponent(k)}">
+      <div class="gname">${k}</div>
+      <div class="gdef">${state.learned[k]}</div>
+    </div>`).join('');
+  if(highlight){
+    const el=body.querySelector(`[data-k="${encodeURIComponent(highlight)}"]`);
+    if(el) el.scrollIntoView({block:'center'});
+  }
+}
+const scrim=document.getElementById('scrim');
+const drawer=document.getElementById('drawer');
+function openDrawer(highlight){
+  renderGuide(typeof highlight==='string'?highlight:null);
+  scrim.classList.add('open'); drawer.classList.add('open');
+}
+function closeDrawer(){ scrim.classList.remove('open'); drawer.classList.remove('open'); }
+document.getElementById('guideOpen').onclick=()=>openDrawer();
+document.getElementById('guideClose').onclick=closeDrawer;
+scrim.onclick=closeDrawer;
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDrawer(); });
+
+/* ============================================================
+   BOOT
+============================================================ */
+updateHUD();
+renderStage();
+</script>
+</body>
+</html>
